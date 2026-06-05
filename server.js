@@ -14,8 +14,10 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ── Body parsers only for OAuth routes — NOT for /sse or /message ─────────
+// Applying body parsers globally consumes the request stream, which breaks
+// the proxy for /message (supergateway receives an empty/aborted body).
+const parseBody = [express.json(), express.urlencoded({ extended: true })];
 
 const PORT         = process.env.PORT || 3000;
 const INTERNAL_PORT = 3001;                          // supergateway runs here
@@ -46,7 +48,7 @@ app.get('/.well-known/oauth-authorization-server', (req, res) => {
 
 // ── Dynamic Client Registration (RFC 7591) ─────────────────────────────────
 // claude.ai auto-registers itself here before starting the OAuth flow
-app.post('/oauth/register', (req, res) => {
+app.post('/oauth/register', ...parseBody, (req, res) => {
   const { redirect_uris, client_name, token_endpoint_auth_method } = req.body;
   const client_id = crypto.randomBytes(16).toString('hex');
   console.log(`Client registered: ${client_name || 'unknown'} (${client_id})`);
@@ -79,7 +81,7 @@ app.get('/oauth/authorize', (req, res) => {
 });
 
 // ── Token endpoint ─────────────────────────────────────────────────────────
-app.post('/oauth/token', (req, res) => {
+app.post('/oauth/token', ...parseBody, (req, res) => {
   console.log(`[token] body=`, JSON.stringify(req.body));
   const { grant_type, code, code_verifier } = req.body;
 
