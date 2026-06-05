@@ -53,39 +53,51 @@ app.post('/oauth/register', (req, res) => {
 
 // ── Authorization endpoint (auto-approves — personal use only) ─────────────
 app.get('/oauth/authorize', (req, res) => {
-  const { redirect_uri, state, code_challenge, code_challenge_method } = req.query;
+  const { redirect_uri, state, code_challenge, code_challenge_method, client_id } = req.query;
+  console.log(`[authorize] client_id=${client_id} redirect_uri=${redirect_uri} code_challenge=${code_challenge}`);
   if (!redirect_uri) return res.status(400).send('Missing redirect_uri');
 
   const code = crypto.randomBytes(16).toString('hex');
-  authCodes.set(code, { ts: Date.now(), code_challenge, code_challenge_method });
-  setTimeout(() => authCodes.delete(code), 10 * 60 * 1000); // expire in 10 min
+  authCodes.set(code, { ts: Date.now(), code_challenge, code_challenge_method, redirect_uri });
+  setTimeout(() => authCodes.delete(code), 10 * 60 * 1000);
 
   const url = new URL(redirect_uri);
   url.searchParams.set('code', code);
   if (state) url.searchParams.set('state', state);
+  console.log(`[authorize] redirecting with code=${code} to ${url.toString()}`);
   res.redirect(url.toString());
 });
 
 // ── Token endpoint ─────────────────────────────────────────────────────────
 app.post('/oauth/token', (req, res) => {
+  console.log(`[token] body=`, JSON.stringify(req.body));
   const { grant_type, code, code_verifier } = req.body;
 
-  if (grant_type !== 'authorization_code')
+  if (grant_type !== 'authorization_code') {
+    console.log(`[token] ERROR: unsupported grant_type=${grant_type}`);
     return res.status(400).json({ error: 'unsupported_grant_type' });
+  }
 
   const stored = authCodes.get(code);
-  if (!stored) return res.status(400).json({ error: 'invalid_grant' });
+  if (!stored) {
+    console.log(`[token] ERROR: code not found or expired. code=${code}`);
+    return res.status(400).json({ error: 'invalid_grant' });
+  }
 
   // Verify PKCE S256 if provided
   if (stored.code_challenge && code_verifier) {
     const expected = crypto.createHash('sha256')
       .update(Buffer.from(code_verifier))
       .digest('base64url');
-    if (expected !== stored.code_challenge)
+    console.log(`[token] PKCE check: expected=${expected} got=${stored.code_challenge}`);
+    if (expected !== stored.code_challenge) {
+      console.log(`[token] ERROR: PKCE mismatch`);
       return res.status(400).json({ error: 'invalid_grant' });
+    }
   }
 
   authCodes.delete(code);
+  console.log(`[token] SUCCESS: issued bearer token`);
   res.json({ access_token: BEARER_TOKEN, token_type: 'Bearer', expires_in: 31536000 });
 });
 
