@@ -2,7 +2,6 @@ import express from 'express';
 import httpProxy from 'http-proxy';
 import { spawn } from 'child_process';
 import crypto from 'crypto';
-import { PassThrough } from 'stream';
 
 const app = express();
 
@@ -132,15 +131,13 @@ proxy.on('error', (err, req, res) => {
 });
 
 app.use('/sse', requireAuth, (req, res) => {
-  console.log(`[sse] connection from ${req.headers['user-agent'] || 'unknown'}`);
-  // SSE needs these headers to stream properly
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('X-Accel-Buffering', 'no');
-  proxy.web(req, res, { buffer: new PassThrough() });
+  console.log(`[sse] connection from ${req.headers['user-agent'] || 'unknown'} auth=${req.headers.authorization ? 'present' : 'missing'}`);
+  // Let proxy handle SSE directly — no buffering
+  proxy.web(req, res);
 });
 
 app.use('/message', requireAuth, (req, res) => {
-  console.log(`[message] sessionId=${req.query.sessionId}`);
+  console.log(`[message] sessionId=${req.query.sessionId} auth=${req.headers.authorization ? 'present' : 'missing'}`);
   proxy.web(req, res);
 });
 
