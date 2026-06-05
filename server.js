@@ -4,6 +4,16 @@ import { spawn } from 'child_process';
 import crypto from 'crypto';
 
 const app = express();
+
+// ── CORS — allow claude.ai to connect ─────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -111,14 +121,27 @@ function requireAuth(req, res, next) {
 }
 
 // ── Proxy /sse and /message to internal supergateway ──────────────────────
-const proxy = httpProxy.createProxy({ target: `http://localhost:${INTERNAL_PORT}` });
+const proxy = httpProxy.createProxy({
+  target: `http://localhost:${INTERNAL_PORT}`,
+  ws: true,
+});
 proxy.on('error', (err, req, res) => {
   console.error('Proxy error:', err.message);
   if (!res.headersSent) res.status(502).json({ error: 'MCP backend not ready yet, retry in a few seconds' });
 });
 
-app.use('/sse',     requireAuth, (req, res) => proxy.web(req, res));
-app.use('/message', requireAuth, (req, res) => proxy.web(req, res));
+app.use('/sse', requireAuth, (req, res) => {
+  console.log(`[sse] connection from ${req.headers['user-agent'] || 'unknown'}`);
+  // SSE needs these headers to stream properly
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no');
+  proxy.web(req, res, { buffer: require('stream').PassThrough() });
+});
+
+app.use('/message', requireAuth, (req, res) => {
+  console.log(`[message] sessionId=${req.query.sessionId}`);
+  proxy.web(req, res);
+});
 
 // ── Health check ──────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.json({ status: 'ok', server: 'Yahoo Mail MCP Server' }));
