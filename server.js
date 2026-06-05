@@ -23,13 +23,31 @@ const authCodes = new Map();
 app.get('/.well-known/oauth-authorization-server', (req, res) => {
   res.json({
     issuer: BASE_URL,
-    authorization_endpoint: `${BASE_URL}/oauth/authorize`,
-    token_endpoint:         `${BASE_URL}/oauth/token`,
-    scopes_supported:                   ['mcp'],
-    response_types_supported:           ['code'],
-    grant_types_supported:              ['authorization_code'],
-    code_challenge_methods_supported:   ['S256'],
+    authorization_endpoint:  `${BASE_URL}/oauth/authorize`,
+    token_endpoint:          `${BASE_URL}/oauth/token`,
+    registration_endpoint:   `${BASE_URL}/oauth/register`,
+    scopes_supported:                      ['mcp'],
+    response_types_supported:              ['code'],
+    grant_types_supported:                 ['authorization_code'],
+    code_challenge_methods_supported:      ['S256'],
     token_endpoint_auth_methods_supported: ['none'],
+  });
+});
+
+// ── Dynamic Client Registration (RFC 7591) ─────────────────────────────────
+// claude.ai auto-registers itself here before starting the OAuth flow
+app.post('/oauth/register', (req, res) => {
+  const { redirect_uris, client_name, token_endpoint_auth_method } = req.body;
+  const client_id = crypto.randomBytes(16).toString('hex');
+  console.log(`Client registered: ${client_name || 'unknown'} (${client_id})`);
+  res.status(201).json({
+    client_id,
+    client_id_issued_at:        Math.floor(Date.now() / 1000),
+    redirect_uris:              redirect_uris || [],
+    client_name:                client_name || 'claude.ai',
+    token_endpoint_auth_method: token_endpoint_auth_method || 'none',
+    grant_types:                ['authorization_code'],
+    response_types:             ['code'],
   });
 });
 
