@@ -1,9 +1,14 @@
 {
   "name": "yahoo-mail-mcp-server",
-  "version": "1.0.0",
-  "description": "Yahoo Mail IMAP MCP Server — exposes imap-email-mcp over HTTP for Claude remote routines",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Yahoo Mail IMAP MCP Server with OAuth2 for Claude remote routines",
   "scripts": {
-    "start": "npx -y supergateway --port ${PORT:-3000} --stdio \"npx -y imap-email-mcp\""
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "http-proxy": "^1.18.1"
   },
   "engines": {
     "node": ">=18.0.0"
