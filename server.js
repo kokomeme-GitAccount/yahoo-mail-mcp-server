@@ -132,14 +132,20 @@ proxy.on('error', (err, req, res) => {
   if (!res.headersSent) res.status(502).json({ error: 'MCP backend not ready yet, retry in a few seconds' });
 });
 
+// /mcp — Streamable HTTP transport (what claude.ai expects)
+app.use('/mcp', requireAuth, (req, res) => {
+  console.log(`[mcp] ${req.method} from ${req.headers['user-agent'] || 'unknown'}`);
+  proxy.web(req, res);
+});
+
+// Keep /sse and /message as fallback for older clients
 app.use('/sse', requireAuth, (req, res) => {
-  console.log(`[sse] connection from ${req.headers['user-agent'] || 'unknown'} auth=${req.headers.authorization ? 'present' : 'missing'}`);
-  // Let proxy handle SSE directly — no buffering
+  console.log(`[sse] ${req.method} from ${req.headers['user-agent'] || 'unknown'}`);
   proxy.web(req, res);
 });
 
 app.use('/message', requireAuth, (req, res) => {
-  console.log(`[message] sessionId=${req.query.sessionId} auth=${req.headers.authorization ? 'present' : 'missing'}`);
+  console.log(`[message] sessionId=${req.query.sessionId}`);
   proxy.web(req, res);
 });
 
@@ -155,7 +161,7 @@ setTimeout(() => {
   console.log(`Starting supergateway on internal port ${INTERNAL_PORT}...`);
   const sg = spawn(
     'npx',
-    ['-y', 'supergateway', '--port', String(INTERNAL_PORT), '--stdio', 'npx -y imap-email-mcp'],
+    ['-y', 'supergateway', '--port', String(INTERNAL_PORT), '--outputTransport', 'http', '--stdio', 'npx -y imap-email-mcp'],
     { env: { ...process.env }, shell: true }
   );
   sg.stdout.on('data', d => console.log('[sg]', d.toString().trim()));
