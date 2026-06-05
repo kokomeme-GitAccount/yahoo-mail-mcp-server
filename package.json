@@ -1,0 +1,11 @@
+{
+  "name": "yahoo-mail-mcp-server",
+  "version": "1.0.0",
+  "description": "Yahoo Mail IMAP MCP Server — exposes imap-email-mcp over HTTP for Claude remote routines",
+  "scripts": {
+    "start": "npx -y supergateway --port ${PORT:-3000} --stdio \"npx -y imap-email-mcp\""
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

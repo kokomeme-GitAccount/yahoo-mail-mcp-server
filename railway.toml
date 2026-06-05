@@ -1,0 +1,6 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npx -y supergateway --port ${PORT:-3000} --stdio \"npx -y imap-email-mcp\""
+restartPolicyType = "always"
