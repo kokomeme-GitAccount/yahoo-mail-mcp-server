@@ -161,7 +161,7 @@ setTimeout(() => {
   console.log(`Starting supergateway on internal port ${INTERNAL_PORT}...`);
   const sg = spawn(
     'npx',
-    ['-y', 'supergateway', '--port', String(INTERNAL_PORT), '--outputTransport', 'http', '--stdio', 'npx -y imap-email-mcp'],
+    ['-y', 'supergateway', '--port', String(INTERNAL_PORT), '--outputTransport', 'streamableHttp', '--stdio', 'npx -y imap-email-mcp'],
     { env: { ...process.env }, shell: true }
   );
   sg.stdout.on('data', d => console.log('[sg]', d.toString().trim()));
