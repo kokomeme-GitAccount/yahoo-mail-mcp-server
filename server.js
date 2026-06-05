@@ -2,6 +2,7 @@ import express from 'express';
 import httpProxy from 'http-proxy';
 import { spawn } from 'child_process';
 import crypto from 'crypto';
+import { PassThrough } from 'stream';
 
 const app = express();
 
@@ -135,7 +136,7 @@ app.use('/sse', requireAuth, (req, res) => {
   // SSE needs these headers to stream properly
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
-  proxy.web(req, res, { buffer: require('stream').PassThrough() });
+  proxy.web(req, res, { buffer: new PassThrough() });
 });
 
 app.use('/message', requireAuth, (req, res) => {
